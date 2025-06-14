@@ -1,9 +1,14 @@
 import express from "express"
 import mongoose from "mongoose"
-import {registerValidation, loginValidation} from "./validataion.js"
-import checkAuth from "./utils/checkAuth.js"
+import multer from "multer"
 
-import * as userController from "./controllers/userController.js"
+import {
+  registerValidation,
+  loginValidation,
+  postCreateValidation
+} from "./validataion.js"
+import {handleValidationErrors, checkAuth} from "./utils/index.js"
+import {userController, postController} from "./controllers/index.js"
 
 mongoose
   .connect(
@@ -13,15 +18,57 @@ mongoose
   .catch((err) => console.log(err))
 
 const app = express()
-app.use(express.json())
 
-app.get("/", (res) => {
-  res.send("Hello World")
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => {
+    cb(null, "uploads")
+  },
+  filename: (_, file, cb) => {
+    cb(null, file.originalname)
+  }
+})
+const upload = multer({storage})
+
+app.use(express.json())
+app.use("/uploads", express.static("uploads"))
+
+app.post(
+  "/auth/login",
+  loginValidation,
+  handleValidationErrors,
+  userController.login
+)
+app.post(
+  "/auth/register",
+  registerValidation,
+  handleValidationErrors,
+  userController.register
+)
+app.get("/auth/me", checkAuth, userController.getMe)
+
+app.post("/upload", checkAuth, upload.single("image"), (req, res) => {
+  res.json({
+    url: `/uploads/${req.file.originalname}`
+  })
 })
 
-app.post("/auth/login", loginValidation, userController.login)
-app.post("/auth/register", registerValidation, userController.register)
-app.get("/auth/me", checkAuth, userController.getMe)
+app.get("/posts", postCreateValidation, postController.getAll)
+app.get("/posts/:id", postController.getOne)
+app.post(
+  "/posts",
+  checkAuth,
+  postCreateValidation,
+  handleValidationErrors,
+  postController.create
+)
+app.delete("/posts/:id", checkAuth, postController.remove)
+app.patch(
+  "/posts/:id",
+  checkAuth,
+  postCreateValidation,
+  handleValidationErrors,
+  postController.update
+)
 
 app.listen(4444, (err) => {
   if (err) {

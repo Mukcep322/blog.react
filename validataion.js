@@ -17,3 +17,10 @@ export const loginValidation = [
     "Password must be longer than 5 and shorter than 32"
   ).isLength({min: 5, max: 32})
 ]
+
+export const postCreateValidation = [
+  body("title", "Write title").isLength({min: 3}).isString(),
+  body("text", "Write text").isLength({min: 10}).isString(),
+  body("tags", "Uncorrect tags").optional().isString(),
+  body("imageUrl", "Uncorrect url").optional().isString()
+]
